@@ -9,6 +9,7 @@ Reuses grader.py + math_normalize.py for answer equivalence.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -23,6 +24,9 @@ from transformers import AutoTokenizer  # noqa: E402
 from vllm import LLM, SamplingParams  # noqa: E402
 
 SYSTEM_PROMPT = "Please reason step by step, and put your final answer within \\boxed{}"
+
+# Benchmarks whose answers are option letters rather than free-form expressions.
+MULTIPLE_CHOICE = {"gpqa"}
 
 
 # --- boxed-answer extraction (verbatim from eval.py) -------------------------
@@ -69,6 +73,29 @@ def extract_solution(solution_str):
         return remove_boxed(boxed)
     except AssertionError:
         return None
+
+
+# --- multiple-choice fallback ------------------------------------------------
+
+# Models are asked to box their answer, but on multiple-choice benchmarks they
+# often state the letter in the conventional GPQA form instead ("ANSWER: C", or
+# "Answer: B. <restated option>"). The DeepSeek-R1-Distill family does this for
+# about a third of GPQA responses; scoring on \boxed{} alone discards those as
+# wrong and understates accuracy by several points. Applied only when no boxed
+# answer is present, so it never overrides an explicit one.
+_CHOICE_PATTERNS = [
+    (r"ANSWER:\s*\(?([ABCD])\)?\b", 0),
+    (r"(?:final\s+)?answer\s+is\s*\**\s*\(?([ABCD])\)?\b", re.IGNORECASE),
+]
+
+
+def extract_choice(solution_str):
+    """Recover a multiple-choice letter stated without \boxed{}. None if absent."""
+    for pattern, flags in _CHOICE_PATTERNS:
+        found = re.findall(pattern, solution_str, flags)
+        if found:
+            return found[-1].upper()
+    return None
 
 
 # --- benchmark loaders -------------------------------------------------------
@@ -216,6 +243,8 @@ def main():
             tok_len = len(out.outputs[0].token_ids)
             gt = ex["answer"]
             pred = extract_solution(response)
+            if pred is None and args.benchmark in MULTIPLE_CHOICE:
+                pred = extract_choice(response)
             try:
                 ok = bool(grade_answer(pred, gt)) if pred is not None else False
             except Exception:
