@@ -38,6 +38,8 @@ Training with it keeps or improves accuracy while roughly halving the length of 
 Accuracy and length are means over AMC23, AIME24, MATH500 and GPQA-Diamond; deltas are relative to
 the untrained base model. AES is the Accuracy–Efficiency Score (α=1, β=3, γ=5).
 
+Raw per-benchmark summaries for both checkpoints are in [`results/`](results/).
+
 <details>
 <summary><b>Per-benchmark results (paper, Table 2)</b></summary>
 
