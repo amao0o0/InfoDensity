@@ -1,0 +1,10 @@
+{
+  "model_path": "Qwen/Qwen3-8B",
+  "benchmark": "amc23",
+  "n_problems": 40,
+  "num_correct": 34,
+  "accuracy": 0.85,
+  "avg_response_tokens": 8272.775,
+  "max_tokens": 16384,
+  "temperature": 0.0
+}

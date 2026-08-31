@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Local eval artifacts
+outputs/
+logs/
+*.log
+
+# Per-sample generations are large; only summaries are tracked under results/
+*.jsonl
+
+# Model weights and checkpoints are distributed via HuggingFace, not git
+checkpoints/
+merged_hf/
+*.safetensors
+*.bin
+*.pt
+
+# Benchmark data is built locally
+data/

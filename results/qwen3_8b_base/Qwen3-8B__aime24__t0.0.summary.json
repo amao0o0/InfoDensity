@@ -1,0 +1,10 @@
+{
+  "model_path": "Qwen/Qwen3-8B",
+  "benchmark": "aime24",
+  "n_problems": 30,
+  "num_correct": 22,
+  "accuracy": 0.7333333333333333,
+  "avg_response_tokens": 11239.966666666667,
+  "max_tokens": 16384,
+  "temperature": 0.0
+}

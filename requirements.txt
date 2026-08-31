@@ -1,0 +1,11 @@
+# Evaluation pipeline dependencies.
+# Pinned to the versions used for the results reported in the paper.
+vllm==0.8.4
+torch
+transformers
+peft
+datasets
+pandas
+pyarrow
+sympy
+pylatexenc

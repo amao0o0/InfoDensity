@@ -1,0 +1,10 @@
+{
+  "model_path": "Qwen/Qwen3-8B",
+  "benchmark": "math500",
+  "n_problems": 500,
+  "num_correct": 459,
+  "accuracy": 0.918,
+  "avg_response_tokens": 5213.584,
+  "max_tokens": 16384,
+  "temperature": 0.0
+}

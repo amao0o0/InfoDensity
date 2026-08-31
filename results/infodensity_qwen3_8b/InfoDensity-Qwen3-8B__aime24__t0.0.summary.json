@@ -1,0 +1,10 @@
+{
+  "model_path": "amao0o0/InfoDensity-Qwen3-8B",
+  "benchmark": "aime24",
+  "n_problems": 30,
+  "num_correct": 22,
+  "accuracy": 0.7333333333333333,
+  "avg_response_tokens": 6858.9,
+  "max_tokens": 16384,
+  "temperature": 0.0
+}
