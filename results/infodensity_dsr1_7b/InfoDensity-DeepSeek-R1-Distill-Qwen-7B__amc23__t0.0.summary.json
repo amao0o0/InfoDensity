@@ -1,0 +1,10 @@
+{
+  "model_path": "amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B",
+  "benchmark": "amc23",
+  "n_problems": 40,
+  "num_correct": 38,
+  "accuracy": 0.95,
+  "avg_response_tokens": 3593.25,
+  "max_tokens": 16384,
+  "temperature": 0.0
+}
