@@ -34,11 +34,13 @@ Training with it keeps or improves accuracy while roughly halving the length of 
 |:--|:--|:--:|:--:|:--:|
 | [**InfoDensity-Qwen3-8B**](https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B) | [Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B) | 78.1 <sub>(+4.1)</sub> | 4.2k <sub>(−53%)</sub> | **+0.69** |
 | [**InfoDensity-DeepSeek-R1-Distill-Qwen-7B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B) | [DSR-Qwen-7B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B) | 72.2 <sub>(+14.1)</sub> | 4.5k <sub>(−47%)</sub> | **+1.20** |
+| [**InfoDensity-DeepSeek-R1-Distill-Llama-8B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | [DSR-Llama-8B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | 56.5 <sub>(+10.3)</sub> | 6.6k <sub>(−30%)</sub> | **+0.97** |
+| [**InfoDensity-DeepSeek-R1-Distill-Qwen-1.5B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-1.5B) | [DSR-Qwen-1.5B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B) | 50.8 <sub>(+14.3)</sub> | 7.5k <sub>(−32%)</sub> | **+1.49** |
 
 Accuracy and length are means over AMC23, AIME24, MATH500 and GPQA-Diamond; deltas are relative to
 the untrained base model. AES is the Accuracy–Efficiency Score (α=1, β=3, γ=5).
 
-Raw per-benchmark summaries for both checkpoints are in [`results/`](results/).
+Raw per-benchmark summaries for every released checkpoint are in [`results/`](results/).
 
 <details>
 <summary><b>Per-benchmark results (paper, Table 2)</b></summary>
@@ -49,6 +51,15 @@ Raw per-benchmark summaries for both checkpoints are in [`results/`](results/).
 | **+ InfoDensity** | 95.0 / 3.6k | 60.0 / 6.5k | 91.0 / 2.1k | 42.9 / 5.6k | **72.2 / 4.5k** |
 | Qwen3-8B | 90.0 / 8.0k | 63.3 / 12.2k | 90.6 / 5.4k | 52.0 / 9.9k | 74.0 / 8.9k |
 | **+ InfoDensity** | 90.0 / 3.7k | 73.3 / 6.9k | 93.0 / 2.1k | 56.1 / 4.2k | **78.1 / 4.2k** |
+| DeepSeek-R1-Distill-Qwen-1.5B | 50.0 / 9.6k | 20.0 / 14.3k | 69.6 / 6.2k | 6.6 / 14.4k | 36.5 / 11.1k |
+| **+ InfoDensity** | 80.0 / 5.0k | 33.3 / 9.8k | 80.2 / 3.4k | 9.6 / 11.8k | **50.8 / 7.5k** |
+
+And DeepSeek-R1-Distill-Llama-8B (paper, Appendix E / Table 4):
+
+| Model | AMC23 | AIME24 | MATH500 | GPQA-D | Overall |
+|:--|:--:|:--:|:--:|:--:|:--:|
+| DeepSeek-R1-Distill-Llama-8B | 65.0 / 8.5k | 23.3 / 13.3k | 78.8 / 5.2k | 17.7 / 10.7k | 46.2 / 9.4k |
+| **+ InfoDensity** | 80.0 / 5.4k | 40.0 / 10.0k | 82.8 / 3.2k | 23.2 / 7.7k | **56.5 / 6.6k** |
 
 Cells are accuracy (%) / mean response tokens.
 
@@ -108,12 +119,41 @@ eval/
 ├── run_eval.sh            merge → evaluate driver
 ├── compute_aes.py         Accuracy–Efficiency Score
 └── four_cell_analysis.py  preserved / rescued / still-wrong / regression breakdown
+training/
+├── infodensity_reward.py  the reward: correctness gate x R_quality x R_L
+├── entropy_trajectory.py  suffix-max envelope and the R_quality term
+├── prepare_data.py        DeepMath-103K subset -> verl parquet
+└── verl_integration.md    forwarding rollout entropy to the reward function
 results/                   per-benchmark evaluation summaries
 ```
 
 ## 🏋️ Training
 
-Training code is released separately and will be added to this repository.
+[`training/`](training/) holds the reward and the data it trains on. The RL loop
+itself is [verl](https://github.com/volcengine/verl); the reward plugs into its
+`batch` reward manager.
+
+$$R_{\text{InfoDensity}}(\tau) = R_{\text{quality}}(\tau)\cdot R_{L}(\tau)\quad\text{if }\tau\text{ is correct},\qquad 0\ \text{otherwise.}$$
+
+The correctness gate comes first, so neither factor can buy brevity with accuracy.
+
+- **$R_{\text{quality}}$** scores information density from the trace's own rollout
+  entropy — no judge model and no second forward pass. Per-token entropy is chunked
+  and averaged into a trajectory, replaced by its **suffix-max envelope**
+  $E_t = \max(H_t,\dots,H_T)$ so that trailing high-entropy filler propagates
+  backward instead of hiding behind a confident prefix, then normalised by
+  $\log K$ — a constant shared by every trace, so no trace can improve its score by
+  inflating its own reference point.
+- **$R_L$** scales a correct trace by $\exp(-\lambda z)$, where $z$ is its length
+  z-score among the *correct* traces sampled for the same prompt. Comparing
+  within a prompt avoids holding easy and hard problems to one length budget, and
+  the group mean re-centres as the policy shortens.
+
+Training with it needs one change to verl so that rollout entropy reaches the
+reward function — without it `R_quality` is silently skipped and only the length
+term trains. [`training/README.md`](training/README.md) walks through data prep,
+that patch, and the hydra overrides; hyperparameters are arguments there, not
+constants, so set them for your own setup.
 
 ## 🙏 Acknowledgements
 
@@ -136,4 +176,5 @@ is an offline-vLLM rewrite of its evaluation script, and `grader.py` is taken fr
 ## ⚖️ License
 
 Apache-2.0 (see [LICENSE](LICENSE)). The released weights inherit their base models' licenses:
-DeepSeek-R1-Distill-Qwen-7B (MIT) and Qwen3-8B (Apache-2.0).
+the DeepSeek-R1-Distill checkpoints (Qwen-7B, Llama-8B, Qwen-1.5B) are MIT, and Qwen3-8B is
+Apache-2.0.

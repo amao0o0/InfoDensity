@@ -39,6 +39,20 @@ BASE = {
         "gpqa":    (52.0,  9900),
         "overall": (74.0,  8900),
     },
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B": {
+        "amc23":   (50.0,  9600),
+        "aime24":  (20.0, 14300),
+        "math500": (69.6,  6200),
+        "gpqa":    ( 6.6, 14400),
+        "overall": (36.5, 11100),
+    },
+    "deepseek-ai/DeepSeek-R1-Distill-Llama-8B": {
+        "amc23":   (65.0,  8500),
+        "aime24":  (23.3, 13300),
+        "math500": (78.8,  5200),
+        "gpqa":    (17.7, 10700),
+        "overall": (46.2,  9400),
+    },
 }
 
 
@@ -54,8 +68,17 @@ def aes(a_model, l_model, a_base, l_base, alpha=1, beta=3, gamma=5):
 
 
 def infer_base(results_dir):
-    """Dir name conventions: *_8b_* → Qwen3-8B, *_7b_*/*dsr1* → DSR1-7B, else Qwen3-4B."""
+    """Guess the base model from the results dir name.
+
+    Matched most-specific first: a name like ``results_dsr1_1.5b`` contains both
+    "1.5b" and "dsr1", and a name like ``infodensity_llama8b`` contains both
+    "llama" and "8b", so order decides. Pass --base to skip the guessing.
+    """
     name = os.path.basename(os.path.normpath(results_dir)).lower()
+    if "1.5b" in name or "1_5b" in name:
+        return "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+    if "llama" in name:
+        return "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
     if "8b" in name:
         return "Qwen/Qwen3-8B"
     if "7b" in name or "dsr1" in name:
@@ -78,12 +101,16 @@ def main():
     args = p.parse_args()
 
     base_id = args.base or infer_base(args.results_dir)
+    if base_id not in BASE:
+        sys.exit(f"no reference numbers for base model {base_id!r}; "
+                 f"known: {', '.join(sorted(BASE))}")
     base = BASE[base_id]
     print(f"# base model: {base_id}")
     print(f"# AES (asymmetric, α=1, β=3, γ=5)")
     print()
 
     step_dirs = sorted(glob.glob(os.path.join(args.results_dir, "step_*")), key=lambda x: int(x.rsplit("_", 1)[-1]))
+    flat = not step_dirs  # a single run's summaries sitting directly in results_dir
     benches = ["amc23", "aime24", "math500", "gpqa"]
     hdr = ["step"] + [b for b in benches for _ in (0, 1)] + ["Acc", "Len", "AES"]
     cols = (4, 7, 4, 7, 4, 7, 4, 7, 4, 5, 5, 5)
@@ -96,12 +123,12 @@ def main():
     aA, aL = base["amc23"]; iA, iL = base["aime24"]; mA, mL = base["math500"]; gA, gL = base["gpqa"]; oA, oL = base["overall"]
     print(f"  base   {aA:>5.1f} {aL/1000:>5.1f}k  {iA:>5.1f} {iL/1000:>5.1f}k  {mA:>5.1f} {mL/1000:>5.1f}k  {gA:>5.1f} {gL/1000:>5.1f}k  {oA:>5.1f}  {oL/1000:>4.1f}k  {0.000:>6.3f}")
 
-    for sd in step_dirs:
-        step = int(os.path.basename(sd).rsplit("_", 1)[-1])
+    for sd in ([args.results_dir] if flat else step_dirs):
+        label = "run" if flat else f"{int(os.path.basename(sd).rsplit('_', 1)[-1]):>4d}"
         r = load_step(sd)
         if len(r) < 4:
             missing = [b for b in benches if b not in r]
-            print(f"  {step:>4d}  incomplete (missing: {missing})")
+            print(f"  {label:>4}  incomplete (missing: {missing})")
             continue
         accs = [r[b][0] for b in benches]
         lens = [r[b][1] for b in benches]
@@ -109,7 +136,7 @@ def main():
         o_len = sum(lens) / 4
         bA, bL = base["overall"]
         score = aes(o_acc, o_len, bA, bL)
-        row = f"  {step:>4d}  "
+        row = f"  {label:>4}  "
         for a, l in zip(accs, lens):
             row += f"{a:>5.1f} {l/1000:>5.1f}k  "
         row += f"{o_acc:>5.1f}  {o_len/1000:>4.1f}k  {score:>+6.3f}"
