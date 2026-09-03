@@ -77,12 +77,9 @@ def extract_solution(solution_str):
 
 # --- multiple-choice fallback ------------------------------------------------
 
-# Models are asked to box their answer, but on multiple-choice benchmarks they
-# often state the letter in the conventional GPQA form instead ("ANSWER: C", or
-# "Answer: B. <restated option>"). The DeepSeek-R1-Distill family does this for
-# about a third of GPQA responses; scoring on \boxed{} alone discards those as
-# wrong and understates accuracy by several points. Applied only when no boxed
-# answer is present, so it never overrides an explicit one.
+# On multiple-choice benchmarks a model may state the letter in the conventional
+# form ("ANSWER: C", "Answer: B. <restated option>") rather than boxing it. This
+# runs only when no boxed answer is present, so it never overrides an explicit one.
 _CHOICE_PATTERNS = [
     (r"ANSWER:\s*\(?([ABCD])\)?\b", 0),
     (r"(?:final\s+)?answer\s+is\s*\**\s*\(?([ABCD])\)?\b", re.IGNORECASE),
@@ -120,13 +117,12 @@ def load_benchmark(name):
             out.append({"question": ex["problem"], "answer": str(ans).strip()})
         return out
     if name == "gpqa":
-        # ETR uses fingertap/GPQA-Diamond (third-party fork). May 401.
         try:
             ds = load_dataset("fingertap/GPQA-Diamond", split="test")
         except Exception as e:
             raise RuntimeError(
-                f"fingertap/GPQA-Diamond load failed ({e}); try setting HF token "
-                f"and using `Idavidrein/gpqa` instead."
+                f"fingertap/GPQA-Diamond load failed ({e}); with an HF token set, "
+                f"`Idavidrein/gpqa` carries the same questions."
             )
         # gpqa may have different field names; try common ones
         out = []
@@ -260,7 +256,9 @@ def main():
         "temperature": args.temperature,
         "tp": args.tp,
         "generation_seconds": gen_secs,
-        "results_file": str(out_file),
+        # basename only: a summary is meant to be shareable, and the full path is
+        # a property of the machine that produced it
+        "results_file": out_file.name,
     }
     with open(summary_file, "w") as fh:
         json.dump(summary, fh, indent=2)

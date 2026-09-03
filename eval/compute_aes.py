@@ -1,4 +1,4 @@
-"""Compute per-step and per-benchmark AES from eval/results_*/ directories.
+"""Compute per-benchmark and overall AES from a directory of eval summaries.
 
 AES (asymmetric, alpha=1 beta=3 gamma=5), as defined in the InfoDensity paper:
     if  ΔA >= 0:  AES = α·ΔL + β·ΔA
@@ -87,7 +87,7 @@ def load_step(step_dir):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("results_dir", help="e.g. eval/results or eval/results_7b_4gpu")
+    p.add_argument("results_dir", help="dir of *.summary.json, or of step_* subdirs")
     p.add_argument("--base", help="override base model id")
     args = p.parse_args()
 

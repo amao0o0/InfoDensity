@@ -1,7 +1,7 @@
 #!/bin/bash
 # Driver: for each (ckpt, benchmark) combo, merge LoRA → run eval_vllm.py.
 #
-# Expected env from sbatch:
+# Environment variables:
 #   CKPT_STEPS         space-separated list, e.g. "30 50 60"
 #   BENCHMARKS         space-separated, e.g. "amc23 math500 aime24 gpqa"
 #   GPU_ID             which GPU (0-7) this driver shard uses
@@ -14,7 +14,7 @@
 #   DELETE_MERGED_AFTER=1  drop merged_hf once a step's benchmarks are done
 #   PRUNE_FSDP_AFTER=1     drop FSDP shards / optimizer state (blocks resuming)
 
-set -uo pipefail   # NOTE: no -e — we want a single benchmark failure (e.g. dataset 401) NOT to kill the rest
+set -uo pipefail   # deliberately no -e: one failing benchmark should not abort the rest
 unset ROCR_VISIBLE_DEVICES
 export CUDA_VISIBLE_DEVICES=${GPU_ID:-0}
 
