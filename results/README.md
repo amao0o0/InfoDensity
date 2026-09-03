@@ -18,24 +18,16 @@ regenerates them.
 
 Greedy decoding is not bit-reproducible under vLLM: batching and kernel selection perturb
 floating-point rounding, which occasionally flips a token and sends a trace down a different path.
+In practice that is usually harmless — `infodensity_dsr_llama_8b/` was produced by downloading the
+model from the Hub and re-running the pipeline months later on different hardware, and AMC23,
+AIME24 and MATH500 came back byte-identical, all 40, 30 and 500 generations.
 
-How much that matters depends on the benchmark and the model. `infodensity_dsr_llama_8b/` was
-produced by downloading the model from the Hub and re-running the pipeline months after the numbers
-in the paper were measured, on different hardware, and AMC23, AIME24 and MATH500 came back
-**byte-identical** — every one of the 40, 30 and 500 generations. So these numbers are not fragile
-in general.
+Where it does bite: AMC23 and AIME24 have only 40 and 30 problems, so one flipped problem moves
+them by 2.5 and 3.3 points, and a trace that forks into a repetition loop runs to the 16384-token
+cap and scores zero rather than merely rounding differently. Smaller models with longer traces are
+the most exposed. Treat individual cells as point estimates; the four-benchmark mean is far steadier
+than any one of them.
 
-They can be fragile in particular, though, and the risk concentrates in two places. AMC23 and
-AIME24 have only 40 and 30 problems, so a single flipped problem moves them by 2.5 and 3.3 points.
-And a trace that forks mid-generation can fall into a repetition loop and run to the 16384-token
-cap, where it produces no boxed answer and scores zero — so one perturbation can cost a whole
-problem rather than a rounding error. Smaller models with longer traces are the most exposed.
-
-Mean accuracy over the four benchmarks is considerably more stable than any single benchmark; treat
-individual cells as point estimates rather than exact quantities.
-
-The baseline rows in the paper's Table 2 for the 7B and 8B blocks are quoted from prior work rather
-than re-run here, so `qwen3_8b_base/` may differ from Table 2 by a small margin.
-
-On GPQA-Diamond a response that states its choice as `ANSWER: C` without `\boxed{}` is credited,
-for the model and its base alike.
+The paper's baseline rows for the 7B and 8B blocks are quoted from prior work rather than re-run
+here, so `qwen3_8b_base/` may differ slightly. On GPQA-Diamond a response stating its choice as
+`ANSWER: C` without `\boxed{}` is credited, for model and base alike.

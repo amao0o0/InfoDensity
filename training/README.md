@@ -1,11 +1,8 @@
 # Training
 
-The InfoDensity reward, and what it takes to train with it.
-
-This is the reward and its data, not a turnkey cluster harness: the RL loop
-itself is [verl](https://github.com/volcengine/verl), and the pieces here plug
-into it. Hyperparameters (lambda, chunk size C, top-K, and the usual PPO/GRPO
-knobs) are yours to set — they are arguments here, not constants.
+The reward and the data it trains on — not a turnkey cluster harness. The RL loop itself is
+[verl](https://github.com/volcengine/verl); these pieces plug into it. Hyperparameters (λ, chunk
+size C, top-K, and the usual PPO/GRPO knobs) are arguments here, not constants.
 
 ```
 training/
@@ -19,34 +16,26 @@ training/
 
 $$R_{\text{InfoDensity}}(\tau) = R_{\text{quality}}(\tau)\cdot R_{L}(\tau)\quad\text{if }\tau\text{ is correct},\qquad 0\ \text{otherwise.}$$
 
-**The correctness gate comes first.** An incorrect trace scores 0 no matter how
-short or how dense it is, so neither factor can buy brevity with accuracy.
+An incorrect trace scores 0 however short or dense it is, so neither factor can buy brevity with
+accuracy.
 
-**$R_{\text{quality}}$ — how information-dense the trace is.** The trace's
-per-token rollout entropy is cut into chunks of C tokens and averaged per chunk,
-giving a trajectory $H_1 \dots H_T$ over the deliberation span. Two steps turn
-it into a score:
-
-- *Suffix-max envelope*: $E_t = \max(H_t,\dots,H_T)$, so each chunk is charged
-  with the highest entropy still ahead of it. A trace that resolves and then
-  drifts back into high-entropy filler cannot hide the filler behind a confident
-  prefix — late chunks propagate backward and lift the whole envelope.
-- *Trace-external anchor*: divide by $\log K$, the entropy of a uniform choice
-  among K continuations. The same constant for every trace in the batch, so a
-  trace cannot improve its score by inflating its own reference point — which is
-  what normalising by the trace's own first or maximum chunk would allow.
+**$R_{\text{quality}}$.** Per-token rollout entropy is cut into chunks of C tokens and averaged,
+giving a trajectory $H_1 \dots H_T$ over the deliberation span, which is then replaced by its
+suffix-max envelope $E_t = \max(H_t,\dots,H_T)$ — each chunk is charged with the highest entropy
+still ahead of it, so a trace that resolves and then drifts back into filler cannot hide that filler
+behind a confident prefix. Dividing by $\log K$, the entropy of a uniform choice among K
+continuations, anchors every trace in the batch to the same constant; normalising by the trace's own
+first or maximum chunk would instead let it inflate its own reference point.
 
 $$R_{\text{quality}} = \mathrm{clip}\!\left(1 - \frac{1}{T}\sum_t \frac{E_t}{\log K},\ 0,\ 1\right)$$
 
-**$R_L$ — group-relative length scaling.** Among the *correct* traces sampled for
-the same prompt, a trace of length $L_i$ is scaled by $\exp(-\lambda z_i)$, where
-$z_i$ is $L_i$'s z-score within that group. The comparison is within-prompt, so
-easy and hard problems are not held to one absolute length budget, and the group
-mean re-centres as the policy shortens — the pressure does not fade away once
-every trace is short.
+**$R_L$.** Among the *correct* traces sampled for the same prompt, a trace of length $L_i$ is scaled
+by $\exp(-\lambda z_i)$, with $z_i$ its z-score in that group. Comparing within a prompt avoids
+holding easy and hard problems to one absolute budget, and the group mean re-centres as the policy
+shortens, so the pressure does not fade once every trace is short.
 
-Both factors need `extra_infos[i]`: `"index"` to group a prompt's rollouts (set
-by `prepare_data.py`) and `"entropys"` for the trajectory (see below).
+Both factors read `extra_infos[i]`: `"index"` to group a prompt's rollouts (set by
+`prepare_data.py`) and `"entropys"` for the trajectory.
 
 ## Running it
 
@@ -61,18 +50,15 @@ The difficulty 5-10 slice of [DeepMath-103K](https://huggingface.co/datasets/zwh
 
 **2. Patch verl so rollout entropy reaches the reward.** One block in
 `verl/workers/reward_manager/batch.py`, plus
-`actor_rollout_ref.rollout.calculate_log_probs=True`. Without it `R_quality` is
-silently skipped and you are training the length term alone —
-[`verl_integration.md`](verl_integration.md) has the change and a check that
-tells you whether it took.
+`actor_rollout_ref.rollout.calculate_log_probs=True`. Without it `R_quality` is silently skipped and
+you are training the length term alone.
 
-**3. Point verl's `batch` reward manager at `compute_score`**, passing
-`tokenizer_name`, `length_coef`, `entropy_chunk_size` and `entropy_top_k`
-through `custom_reward_function.reward_kwargs`. The exact hydra overrides are in
-[`verl_integration.md`](verl_integration.md).
+**3. Point verl's `batch` reward manager at `compute_score`**, passing `tokenizer_name`,
+`length_coef`, `entropy_chunk_size` and `entropy_top_k` through
+`custom_reward_function.reward_kwargs`. [`verl_integration.md`](verl_integration.md) has both the
+patch and the overrides, plus a check that tells you whether the patch took.
 
-The released checkpoints were trained with LoRA on top of each base model; the
-reward is indifferent to that choice.
+The released checkpoints were trained with LoRA; the reward is indifferent to that choice.
 
 **4. Evaluate.** Merge the adapter and score the four benchmarks with the
 pipeline in [`../eval/`](../eval):
@@ -88,12 +74,11 @@ python eval/compute_aes.py <out> --base <base model id>
 
 ## Notes
 
-- **Entropy is free here.** `R_quality` reads the entropy vLLM already produced
-  while sampling the trace. No judge model, no second forward pass.
-- **`R_quality` is skipped, not guessed, when entropy is missing** — on the
-  validation split, or on traces shorter than one chunk. Those traces keep their
-  base reward.
-- **Traces without a `<think>` block** are scored over their full length.
+- `R_quality` reads the entropy vLLM already produced while sampling the trace: no judge model, no
+  second forward pass.
+- When entropy is missing — the validation split, or traces shorter than one chunk — `R_quality` is
+  skipped rather than guessed, and the trace keeps its base reward.
+- Traces without a `<think>` block are scored over their full length.
 
 ## License
 

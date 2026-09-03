@@ -4,7 +4,8 @@
 
 ### Rewarding Information-Dense Traces for Efficient Reasoning
 
-[![EMNLP 2026](https://img.shields.io/badge/EMNLP%202026-Main-b31b1b.svg)](https://2026.emnlp.org/)
+[![arXiv](https://img.shields.io/badge/arXiv-2603.17310-b31b1b.svg)](https://arxiv.org/abs/2603.17310)
+[![EMNLP 2026](https://img.shields.io/badge/EMNLP%202026-Main-5c2d91.svg)](https://2026.emnlp.org/)
 [![Models](https://img.shields.io/badge/%F0%9F%A4%97%20Models-InfoDensity-ffbd45.svg)](https://huggingface.co/amao0o0)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -18,26 +19,19 @@ Chengwei Wei · Jung-jae Kim · Longyin Zhang · Shengkai Chen · Nancy F. Chen
 
 ---
 
-Large reasoning models often generate verbose and redundant reasoning traces, incurring
-unnecessary computational cost. Reinforcement-learning approaches address this by optimizing the
-final response length, but they leave the quality of the intermediate reasoning steps unsupervised,
-which makes them vulnerable to reward hacking. We argue that verbosity is not merely a length
-problem, but a symptom of poor intermediate reasoning quality.
+Large reasoning models generate verbose, redundant reasoning traces at real computational cost.
+Reinforcement learning that optimizes only the final response length leaves the quality of the
+intermediate steps unsupervised, which invites reward hacking. Verbosity is not merely a length
+problem — it is a symptom of poor intermediate reasoning.
 
-Tracking the per-token predictive entropy of large reasoning models across reasoning trajectories,
-we find that high-quality traces exhibit two consistent properties: **low uncertainty convergence**
-and **fast uncertainty descent**. High-quality reasoning traces are therefore *informationally
-dense* — their reasoning steps contribute to reaching a low uncertainty level relative to the total
-reasoning length.
-
-**InfoDensity** is a reward framework for RL training that captures both properties through a single
-suffix-max envelope of the entropy trajectory, weighted by a length scaling term that favours
-achieving equivalent quality more concisely:
+Tracking per-token predictive entropy across reasoning trajectories, we find that high-quality
+traces share two properties: **low uncertainty convergence** and **fast uncertainty descent**. Such
+traces are *informationally dense* — their steps reach a low uncertainty level relative to the total
+reasoning length. **InfoDensity** rewards both through a single suffix-max envelope of the entropy
+trajectory, weighted by a length scaling term that favours achieving equivalent quality more
+concisely:
 
 $$R_{\text{InfoDensity}}(\tau) = R_{\text{quality}}(\tau) \cdot R_{L}(\tau)$$
-
-On mathematical and general reasoning benchmarks it matches or outperforms state-of-the-art
-baselines in accuracy while significantly reducing token usage.
 
 ## 🤗 Models
 
@@ -57,17 +51,15 @@ Cells are accuracy (%) / mean response tokens, over greedy pass@1 decoding; **+ 
 link to the released weights. Overall is the mean over the four benchmarks. Raw per-benchmark
 summaries are in [`results/`](results/).
 
-**AES** (Accuracy–Efficiency Score) summarises the trade-off in one number. Measured against the
-base model, with $L$ the mean response length and $A$ the mean accuracy:
+**AES** (Accuracy–Efficiency Score) puts the trade-off in one number, measured against the base
+model with $L$ the mean response length and $A$ the mean accuracy:
 
-- relative length reduction &nbsp; $\Delta L = (L_{\text{base}} - L_{\text{model}}) \, / \, L_{\text{base}}$
-- relative accuracy change &nbsp; $\Delta A = (A_{\text{model}} - A_{\text{base}}) \, / \, A_{\text{base}}$
-- $\text{AES} = \alpha \, \Delta L + \beta \, \Delta A$ &nbsp; when $\Delta A \ge 0$
-- $\text{AES} = \alpha \, \Delta L - \gamma \, |\Delta A|$ &nbsp; when $\Delta A < 0$
+- $\Delta L = (L_{\text{base}} - L_{\text{model}}) \, / \, L_{\text{base}}$ &nbsp; relative length reduction
+- $\Delta A = (A_{\text{model}} - A_{\text{base}}) \, / \, A_{\text{base}}$ &nbsp; relative accuracy change
+- $\text{AES} = \alpha \, \Delta L + \beta \, \Delta A$ &nbsp; when $\Delta A \ge 0$, &nbsp; else $\alpha \, \Delta L - \gamma \, |\Delta A|$
 
-with $\alpha = 1$, $\beta = 3$, $\gamma = 5$. The asymmetry is deliberate: an accuracy gain counts
-triple and an accuracy loss counts quintuple, so brevity bought with correctness cannot score well.
-AES is 0 for the base model and positive only when the tokens saved are not paid for in accuracy.
+with $\alpha = 1$, $\beta = 3$, $\gamma = 5$. A gain counts triple and a loss quintuple, so brevity
+bought with accuracy cannot score well.
 
 ## 🚀 Quick start
 
@@ -133,31 +125,19 @@ results/                   per-benchmark evaluation summaries
 
 ## 🏋️ Training
 
-[`training/`](training/) holds the reward and the data it trains on. The RL loop
-itself is [verl](https://github.com/volcengine/verl); the reward plugs into its
-`batch` reward manager.
+[`training/`](training/) holds the reward and the data it trains on; the RL loop itself is
+[verl](https://github.com/volcengine/verl).
 
-$$R_{\text{InfoDensity}}(\tau) = R_{\text{quality}}(\tau)\cdot R_{L}(\tau)\quad\text{if }\tau\text{ is correct},\qquad 0\ \text{otherwise.}$$
+$R_{\text{quality}}$ reads the trace's own rollout entropy — no judge model, no second forward pass.
+Per-token entropy is chunked into a trajectory and replaced by its suffix-max envelope
+$E_t = \max(H_t, \dots, H_T)$, so trailing filler cannot hide behind a confident prefix, then
+normalised by $\log K$, a constant shared by every trace. $R_L$ scales a correct trace by
+$\exp(-\lambda z)$, its length z-score among the correct traces sampled for the same prompt.
+Incorrect traces score 0, so neither factor can buy brevity with accuracy.
 
-The correctness gate comes first, so neither factor can buy brevity with accuracy.
-
-- **$R_{\text{quality}}$** scores information density from the trace's own rollout
-  entropy — no judge model and no second forward pass. Per-token entropy is chunked
-  and averaged into a trajectory, replaced by its **suffix-max envelope**
-  $E_t = \max(H_t,\dots,H_T)$ so that trailing high-entropy filler propagates
-  backward instead of hiding behind a confident prefix, then normalised by
-  $\log K$ — a constant shared by every trace, so no trace can improve its score by
-  inflating its own reference point.
-- **$R_L$** scales a correct trace by $\exp(-\lambda z)$, where $z$ is its length
-  z-score among the *correct* traces sampled for the same prompt. Comparing
-  within a prompt avoids holding easy and hard problems to one length budget, and
-  the group mean re-centres as the policy shortens.
-
-Training with it needs one change to verl so that rollout entropy reaches the
-reward function — without it `R_quality` is silently skipped and only the length
-term trains. [`training/README.md`](training/README.md) walks through data prep,
-that patch, and the hydra overrides; hyperparameters are arguments there, not
-constants, so set them for your own setup.
+verl needs one change for rollout entropy to reach the reward function; without it $R_{\text{quality}}$
+is silently skipped. [`training/README.md`](training/README.md) has that patch, the data prep and
+the overrides.
 
 ## 🙏 Acknowledgements
 
