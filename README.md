@@ -130,19 +130,20 @@ results/                   per-benchmark evaluation summaries
 
 ## 🏋️ Training
 
-[`training/`](training/) holds the reward and the data it trains on; the RL loop itself is
-[verl](https://github.com/volcengine/verl).
+[`training/`](training/) holds the reward and its data; the RL loop is
+[verl](https://github.com/volcengine/verl). An incorrect trace scores 0, so brevity can never be
+bought with accuracy. A correct one is scored on two factors:
 
-$R_{\text{quality}}$ reads the trace's own rollout entropy — no judge model, no second forward pass.
-Per-token entropy is chunked into a trajectory and replaced by its suffix-max envelope
-$E_t = \max(H_t, \dots, H_T)$, so trailing filler cannot hide behind a confident prefix, then
-normalised by $\log K$, a constant shared by every trace. $R_L$ scales a correct trace by
-$\exp(-\lambda z)$, its length z-score among the correct traces sampled for the same prompt.
-Incorrect traces score 0, so neither factor can buy brevity with accuracy.
+- **$R_{\text{quality}}$** — the entropy vLLM already produced while sampling the trace, chunked
+  into a trajectory and replaced by its suffix-max envelope $E_t = \max(H_t, \dots, H_T)$ so
+  trailing filler cannot hide behind a confident prefix, then divided by $\log K$ so every trace
+  shares one anchor.
+- **$R_L$** — $\exp(-\lambda z)$, with $z$ the trace's length z-score among the correct traces for
+  the same prompt.
 
-verl needs one change for rollout entropy to reach the reward function; without it $R_{\text{quality}}$
-is silently skipped. [`training/README.md`](training/README.md) has that patch, the data prep and
-the overrides.
+One patch to verl is needed for that entropy to reach the reward; without it $R_{\text{quality}}$ is
+silently skipped. [`training/README.md`](training/README.md) has it, plus the data prep and the
+hydra overrides.
 
 ## 🙏 Acknowledgements
 
