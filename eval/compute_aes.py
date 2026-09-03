@@ -19,13 +19,6 @@ import sys
 # Base-model reference numbers (paper Table 2, 'Original' rows). GPQA is scored with
 # the multiple-choice fallback in eval_vllm.py, so these rows use that same rule.
 BASE = {
-    "Qwen/Qwen3-4B": {
-        "amc23":   (90.0,  7600),
-        "aime24":  (53.3, 11700),
-        "math500": (90.6,  5000),
-        "gpqa":    (43.9, 10400),
-        "overall": (69.5,  8700),
-    },
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": {
         "amc23":   (80.0,  6600),
         "aime24":  (43.3, 11800),
@@ -62,7 +55,7 @@ def aes(a_model, l_model, a_base, l_base, alpha=1, beta=3, gamma=5):
 
 
 def infer_base(results_dir):
-    """Guess the base model from the results dir name.
+    """Guess the base model from the results dir name, or None if it cannot tell.
 
     Matched most-specific first: a name like ``infodensity_llama8b`` contains both
     "llama" and "8b", so order decides. Pass --base to skip the guessing.
@@ -74,7 +67,7 @@ def infer_base(results_dir):
         return "Qwen/Qwen3-8B"
     if "7b" in name or "dsr1" in name:
         return "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
-    return "Qwen/Qwen3-4B"
+    return None
 
 
 def load_step(step_dir):
@@ -92,6 +85,9 @@ def main():
     args = p.parse_args()
 
     base_id = args.base or infer_base(args.results_dir)
+    if base_id is None:
+        sys.exit(f"cannot tell which base model {args.results_dir!r} should be scored "
+                 f"against; pass --base, one of: {', '.join(sorted(BASE))}")
     if base_id not in BASE:
         sys.exit(f"no reference numbers for base model {base_id!r}; "
                  f"known: {', '.join(sorted(BASE))}")
