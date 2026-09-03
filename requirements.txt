@@ -1,15 +1,16 @@
-# Evaluation pipeline. The summaries in results/ were produced with vLLM 0.10.0;
-# other versions are untested and greedy decoding is sensitive to the kernels
-# vLLM selects (see results/README.md).
+# vLLM does not cap transformers (it asks only for >=4.53.2), so an unpinned
+# install resolves to a major release that postdates this vLLM and pairs the two
+# untested. transformers and peft are pinned to the versions the summaries in
+# results/ were produced with; the rest float.
 vllm==0.10.0
-torch
-transformers
-peft            # merge_lora.py
-datasets        # benchmark loading
+transformers==4.55.4
+peft==0.16.0            # merge_lora.py
+torch                   # vllm pins this to 2.7.1
+datasets                # benchmark loading
 pyarrow
-sympy           # grader.py
-pylatexenc      # math_normalize.py
+sympy                   # grader.py
+pylatexenc              # math_normalize.py
 numpy
 
 # training/ additionally needs:
-mathruler       # answer equivalence in the reward's correctness gate
+mathruler               # answer equivalence in the reward's correctness gate
