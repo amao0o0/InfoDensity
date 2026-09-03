@@ -35,17 +35,22 @@ $$R_{\text{InfoDensity}}(\tau) = R_{\text{quality}}(\tau) \cdot R_{L}(\tau)$$
 
 ## 🤗 Models
 
-| | AMC23 | AIME24 | MATH500 | GPQA-D | Overall | AES |
-|:--|:--:|:--:|:--:|:--:|:--:|:--:|
-| **DeepSeek-R1-Distill-Qwen-7B** | | | | | | |
-| Base | 80.0&nbsp;/&nbsp;6.6k | 43.3&nbsp;/&nbsp;11.8k | 85.0&nbsp;/&nbsp;4.2k | 24.2&nbsp;/&nbsp;11.3k | 58.1&nbsp;/&nbsp;8.5k | — |
-| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B) | **95.0&nbsp;/&nbsp;3.6k** | **60.0&nbsp;/&nbsp;6.5k** | **91.0&nbsp;/&nbsp;2.1k** | **42.9&nbsp;/&nbsp;5.6k** | **72.2&nbsp;/&nbsp;4.5k** | **+1.20** |
-| **Qwen3-8B** | | | | | | |
-| Base | 90.0&nbsp;/&nbsp;8.0k | 63.3&nbsp;/&nbsp;12.2k | 90.6&nbsp;/&nbsp;5.4k | 52.0&nbsp;/&nbsp;9.9k | 74.0&nbsp;/&nbsp;8.9k | — |
-| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B) | **90.0&nbsp;/&nbsp;3.7k** | **73.3&nbsp;/&nbsp;6.9k** | **93.0&nbsp;/&nbsp;2.1k** | **56.1&nbsp;/&nbsp;4.2k** | **78.1&nbsp;/&nbsp;4.2k** | **+0.69** |
-| **DeepSeek-R1-Distill-Llama-8B** | | | | | | |
-| Base | 65.0&nbsp;/&nbsp;8.5k | 23.3&nbsp;/&nbsp;13.3k | 78.8&nbsp;/&nbsp;5.2k | 23.2&nbsp;/&nbsp;10.7k | 47.6&nbsp;/&nbsp;9.4k | — |
-| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | **80.0&nbsp;/&nbsp;5.4k** | **40.0&nbsp;/&nbsp;10.0k** | **82.8&nbsp;/&nbsp;3.2k** | **30.8&nbsp;/&nbsp;7.6k** | **58.4&nbsp;/&nbsp;6.5k** | **+0.99** |
+<table>
+<thead>
+<tr><th align="left"></th><th>AMC23</th><th>AIME24</th><th>MATH500</th><th>GPQA-D</th><th>Overall</th><th>AES</th></tr>
+</thead>
+<tbody>
+<tr><td colspan="7"><b>DeepSeek-R1-Distill-Qwen-7B</b></td></tr>
+<tr><td align="left">Base</td><td align="center">80.0&nbsp;/&nbsp;6.6k</td><td align="center">43.3&nbsp;/&nbsp;11.8k</td><td align="center">85.0&nbsp;/&nbsp;4.2k</td><td align="center">24.2&nbsp;/&nbsp;11.3k</td><td align="center">58.1&nbsp;/&nbsp;8.5k</td><td align="center">—</td></tr>
+<tr><td align="left"><a href="https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B"><b>+ InfoDensity</b></a></td><td align="center"><b>95.0&nbsp;/&nbsp;3.6k</b></td><td align="center"><b>60.0&nbsp;/&nbsp;6.5k</b></td><td align="center"><b>91.0&nbsp;/&nbsp;2.1k</b></td><td align="center"><b>42.9&nbsp;/&nbsp;5.6k</b></td><td align="center"><b>72.2&nbsp;/&nbsp;4.5k</b></td><td align="center"><b>+1.20</b></td></tr>
+<tr><td colspan="7"><b>Qwen3-8B</b></td></tr>
+<tr><td align="left">Base</td><td align="center">90.0&nbsp;/&nbsp;8.0k</td><td align="center">63.3&nbsp;/&nbsp;12.2k</td><td align="center">90.6&nbsp;/&nbsp;5.4k</td><td align="center">52.0&nbsp;/&nbsp;9.9k</td><td align="center">74.0&nbsp;/&nbsp;8.9k</td><td align="center">—</td></tr>
+<tr><td align="left"><a href="https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B"><b>+ InfoDensity</b></a></td><td align="center"><b>90.0&nbsp;/&nbsp;3.7k</b></td><td align="center"><b>73.3&nbsp;/&nbsp;6.9k</b></td><td align="center"><b>93.0&nbsp;/&nbsp;2.1k</b></td><td align="center"><b>56.1&nbsp;/&nbsp;4.2k</b></td><td align="center"><b>78.1&nbsp;/&nbsp;4.2k</b></td><td align="center"><b>+0.69</b></td></tr>
+<tr><td colspan="7"><b>DeepSeek-R1-Distill-Llama-8B</b></td></tr>
+<tr><td align="left">Base</td><td align="center">65.0&nbsp;/&nbsp;8.5k</td><td align="center">23.3&nbsp;/&nbsp;13.3k</td><td align="center">78.8&nbsp;/&nbsp;5.2k</td><td align="center">23.2&nbsp;/&nbsp;10.7k</td><td align="center">47.6&nbsp;/&nbsp;9.4k</td><td align="center">—</td></tr>
+<tr><td align="left"><a href="https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B"><b>+ InfoDensity</b></a></td><td align="center"><b>80.0&nbsp;/&nbsp;5.4k</b></td><td align="center"><b>40.0&nbsp;/&nbsp;10.0k</b></td><td align="center"><b>82.8&nbsp;/&nbsp;3.2k</b></td><td align="center"><b>30.8&nbsp;/&nbsp;7.6k</b></td><td align="center"><b>58.4&nbsp;/&nbsp;6.5k</b></td><td align="center"><b>+0.99</b></td></tr>
+</tbody>
+</table>
 
 Cells are accuracy (%) / mean response tokens, over greedy pass@1 decoding; **+ InfoDensity** rows
 link to the released weights. Overall is the mean over the four benchmarks. Raw per-benchmark
