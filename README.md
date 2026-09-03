@@ -18,43 +18,56 @@ Chengwei Wei · Jung-jae Kim · Longyin Zhang · Shengkai Chen · Nancy F. Chen
 
 ---
 
-Large reasoning models spend many tokens on deliberation that carries little information —
-re-deriving results they already hold, or looping until they exhaust their generation cap.
+Large reasoning models often generate verbose and redundant reasoning traces, incurring
+unnecessary computational cost. Reinforcement-learning approaches address this by optimizing the
+final response length, but they leave the quality of the intermediate reasoning steps unsupervised,
+which makes them vulnerable to reward hacking. We argue that verbosity is not merely a length
+problem, but a symptom of poor intermediate reasoning quality.
 
-**InfoDensity** is a reinforcement-learning reward for information-dense reasoning. A correct trace
-is rewarded by how quickly its uncertainty falls and how short it is next to the other traces
-sampled for the same question; an incorrect one scores zero however short it is:
+Tracking the per-token predictive entropy of large reasoning models across reasoning trajectories,
+we find that high-quality traces exhibit two consistent properties: **low uncertainty convergence**
+and **fast uncertainty descent**. High-quality reasoning traces are therefore *informationally
+dense* — their reasoning steps contribute to reaching a low uncertainty level relative to the total
+reasoning length.
+
+**InfoDensity** is a reward framework for RL training that captures both properties through a single
+suffix-max envelope of the entropy trajectory, weighted by a length scaling term that favours
+achieving equivalent quality more concisely:
 
 $$R_{\text{InfoDensity}}(\tau) = R_{\text{quality}}(\tau) \cdot R_{L}(\tau)$$
 
-Training with it keeps or improves accuracy while roughly halving the length of the reasoning trace.
+On mathematical and general reasoning benchmarks it matches or outperforms state-of-the-art
+baselines in accuracy while significantly reducing token usage.
 
 ## 🤗 Models
 
-| Model | AMC23 | AIME24 | MATH500 | GPQA-D | Overall | AES |
+| | AMC23 | AIME24 | MATH500 | GPQA-D | Overall | AES |
 |:--|:--:|:--:|:--:|:--:|:--:|:--:|
-| DeepSeek-R1-Distill-Qwen-7B | 80.0 / 6.6k | 43.3 / 11.8k | 85.0 / 4.2k | 24.2 / 11.3k | 58.1 / 8.5k | — |
-| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B) | 95.0 / 3.6k | 60.0 / 6.5k | 91.0 / 2.1k | 42.9 / 5.6k | **72.2 / 4.5k** | **+1.20** |
-| Qwen3-8B | 90.0 / 8.0k | 63.3 / 12.2k | 90.6 / 5.4k | 52.0 / 9.9k | 74.0 / 8.9k | — |
-| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B) | 90.0 / 3.7k | 73.3 / 6.9k | 93.0 / 2.1k | 56.1 / 4.2k | **78.1 / 4.2k** | **+0.69** |
-| DeepSeek-R1-Distill-Llama-8B | 65.0 / 8.5k | 23.3 / 13.3k | 78.8 / 5.2k | 23.2 / 10.7k | 47.6 / 9.4k | — |
-| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | 80.0 / 5.4k | 40.0 / 10.0k | 82.8 / 3.2k | 30.8 / 7.6k | **58.4 / 6.5k** | **+0.99** |
+| **DeepSeek-R1-Distill-Qwen-7B** | | | | | | |
+| Base | 80.0&nbsp;/&nbsp;6.6k | 43.3&nbsp;/&nbsp;11.8k | 85.0&nbsp;/&nbsp;4.2k | 24.2&nbsp;/&nbsp;11.3k | 58.1&nbsp;/&nbsp;8.5k | — |
+| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B) | **95.0&nbsp;/&nbsp;3.6k** | **60.0&nbsp;/&nbsp;6.5k** | **91.0&nbsp;/&nbsp;2.1k** | **42.9&nbsp;/&nbsp;5.6k** | **72.2&nbsp;/&nbsp;4.5k** | **+1.20** |
+| **Qwen3-8B** | | | | | | |
+| Base | 90.0&nbsp;/&nbsp;8.0k | 63.3&nbsp;/&nbsp;12.2k | 90.6&nbsp;/&nbsp;5.4k | 52.0&nbsp;/&nbsp;9.9k | 74.0&nbsp;/&nbsp;8.9k | — |
+| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B) | **90.0&nbsp;/&nbsp;3.7k** | **73.3&nbsp;/&nbsp;6.9k** | **93.0&nbsp;/&nbsp;2.1k** | **56.1&nbsp;/&nbsp;4.2k** | **78.1&nbsp;/&nbsp;4.2k** | **+0.69** |
+| **DeepSeek-R1-Distill-Llama-8B** | | | | | | |
+| Base | 65.0&nbsp;/&nbsp;8.5k | 23.3&nbsp;/&nbsp;13.3k | 78.8&nbsp;/&nbsp;5.2k | 23.2&nbsp;/&nbsp;10.7k | 47.6&nbsp;/&nbsp;9.4k | — |
+| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | **80.0&nbsp;/&nbsp;5.4k** | **40.0&nbsp;/&nbsp;10.0k** | **82.8&nbsp;/&nbsp;3.2k** | **30.8&nbsp;/&nbsp;7.6k** | **58.4&nbsp;/&nbsp;6.5k** | **+0.99** |
 
-Cells are accuracy (%) / mean response tokens; **+ InfoDensity** rows link to the released weights.
-Overall is the mean over the four benchmarks.
+Cells are accuracy (%) / mean response tokens, over greedy pass@1 decoding; **+ InfoDensity** rows
+link to the released weights. Overall is the mean over the four benchmarks. Raw per-benchmark
+summaries are in [`results/`](results/).
 
-**AES** (Accuracy–Efficiency Score) summarises the trade-off in one number. Write the relative
-length reduction and the relative accuracy change against the base model as
+**AES** (Accuracy–Efficiency Score) summarises the trade-off in one number. Measured against the
+base model, with $L$ the mean response length and $A$ the mean accuracy:
 
-$$\Delta L = \frac{L_{\text{base}} - L_{\text{model}}}{L_{\text{base}}}, \qquad \Delta A = \frac{A_{\text{model}} - A_{\text{base}}}{A_{\text{base}}}$$
+- relative length reduction &nbsp; $\Delta L = (L_{\text{base}} - L_{\text{model}}) \, / \, L_{\text{base}}$
+- relative accuracy change &nbsp; $\Delta A = (A_{\text{model}} - A_{\text{base}}) \, / \, A_{\text{base}}$
+- $\text{AES} = \alpha \, \Delta L + \beta \, \Delta A$ &nbsp; when $\Delta A \ge 0$
+- $\text{AES} = \alpha \, \Delta L - \gamma \, |\Delta A|$ &nbsp; when $\Delta A < 0$
 
-$$\text{AES} = \begin{cases} \alpha\,\Delta L + \beta\,\Delta A & \Delta A \ge 0 \\[2pt] \alpha\,\Delta L - \gamma\,|\Delta A| & \Delta A < 0 \end{cases}$$
-
-with α=1, β=3, γ=5. It is deliberately asymmetric: an accuracy gain counts triple, an accuracy loss
-counts quintuple, so a model cannot buy a good score by trading correctness for brevity. AES is 0
-for the base model, and positive only when the length saved is not paid for in accuracy.
-
-Raw per-benchmark summaries for every released checkpoint are in [`results/`](results/).
+with $\alpha = 1$, $\beta = 3$, $\gamma = 5$. The asymmetry is deliberate: an accuracy gain counts
+triple and an accuracy loss counts quintuple, so brevity bought with correctness cannot score well.
+AES is 0 for the base model and positive only when the tokens saved are not paid for in accuracy.
 
 ## 🚀 Quick start
 
