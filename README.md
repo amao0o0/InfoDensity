@@ -18,12 +18,12 @@ Chengwei Wei · Jung-jae Kim · Longyin Zhang · Shengkai Chen · Nancy F. Chen
 
 ---
 
-Large reasoning models spend much of their token budget on low-information deliberation —
-re-deriving results they already have, or looping until they exhaust their generation cap.
+Large reasoning models spend many tokens on deliberation that carries little information —
+re-deriving results they already hold, or looping until they exhaust their generation cap.
 
-**InfoDensity** is a reinforcement-learning reward that scores a reasoning trace by how
-*information-dense* it is. It combines an entropy-trajectory quality term with a group-relative
-length scaling term, and applies the product only to traces that reach a correct answer:
+**InfoDensity** is a reinforcement-learning reward for information-dense reasoning. A correct trace
+is rewarded by how quickly its uncertainty falls and how short it is next to the other traces
+sampled for the same question; an incorrect one scores zero however short it is:
 
 $$R_{\text{InfoDensity}}(\tau) = R_{\text{quality}}(\tau) \cdot R_{L}(\tau)$$
 
@@ -31,42 +31,30 @@ Training with it keeps or improves accuracy while roughly halving the length of 
 
 ## 🤗 Models
 
-| Model | Base | Accuracy | Length | AES |
-|:--|:--|:--:|:--:|:--:|
-| [**InfoDensity-Qwen3-8B**](https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B) | [Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B) | 78.1 <sub>(+4.1)</sub> | 4.2k <sub>(−53%)</sub> | **+0.69** |
-| [**InfoDensity-DeepSeek-R1-Distill-Qwen-7B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B) | [DSR-Qwen-7B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B) | 72.2 <sub>(+14.1)</sub> | 4.5k <sub>(−47%)</sub> | **+1.20** |
-| [**InfoDensity-DeepSeek-R1-Distill-Llama-8B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | [DSR-Llama-8B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | 58.4 <sub>(+10.8)</sub> | 6.5k <sub>(−31%)</sub> | **+0.99** |
+| Model | AMC23 | AIME24 | MATH500 | GPQA-D | Overall | AES |
+|:--|:--:|:--:|:--:|:--:|:--:|:--:|
+| DeepSeek-R1-Distill-Qwen-7B | 80.0 / 6.6k | 43.3 / 11.8k | 85.0 / 4.2k | 24.2 / 11.3k | 58.1 / 8.5k | — |
+| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B) | 95.0 / 3.6k | 60.0 / 6.5k | 91.0 / 2.1k | 42.9 / 5.6k | **72.2 / 4.5k** | **+1.20** |
+| Qwen3-8B | 90.0 / 8.0k | 63.3 / 12.2k | 90.6 / 5.4k | 52.0 / 9.9k | 74.0 / 8.9k | — |
+| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B) | 90.0 / 3.7k | 73.3 / 6.9k | 93.0 / 2.1k | 56.1 / 4.2k | **78.1 / 4.2k** | **+0.69** |
+| DeepSeek-R1-Distill-Llama-8B | 65.0 / 8.5k | 23.3 / 13.3k | 78.8 / 5.2k | 23.2 / 10.7k | 47.6 / 9.4k | — |
+| [**+ InfoDensity**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | 80.0 / 5.4k | 40.0 / 10.0k | 82.8 / 3.2k | 30.8 / 7.6k | **58.4 / 6.5k** | **+0.99** |
 
-Accuracy and length are means over AMC23, AIME24, MATH500 and GPQA-Diamond; deltas are relative to
-the untrained base model. AES is the Accuracy–Efficiency Score (α=1, β=3, γ=5).
+Cells are accuracy (%) / mean response tokens; **+ InfoDensity** rows link to the released weights.
+Overall is the mean over the four benchmarks.
+
+**AES** (Accuracy–Efficiency Score) summarises the trade-off in one number. Write the relative
+length reduction and the relative accuracy change against the base model as
+
+$$\Delta L = \frac{L_{\text{base}} - L_{\text{model}}}{L_{\text{base}}}, \qquad \Delta A = \frac{A_{\text{model}} - A_{\text{base}}}{A_{\text{base}}}$$
+
+$$\text{AES} = \begin{cases} \alpha\,\Delta L + \beta\,\Delta A & \Delta A \ge 0 \\[2pt] \alpha\,\Delta L - \gamma\,|\Delta A| & \Delta A < 0 \end{cases}$$
+
+with α=1, β=3, γ=5. It is deliberately asymmetric: an accuracy gain counts triple, an accuracy loss
+counts quintuple, so a model cannot buy a good score by trading correctness for brevity. AES is 0
+for the base model, and positive only when the length saved is not paid for in accuracy.
 
 Raw per-benchmark summaries for every released checkpoint are in [`results/`](results/).
-
-<details>
-<summary><b>Per-benchmark results (paper, Table 2)</b></summary>
-
-| Model | AMC23 | AIME24 | MATH500 | GPQA-D | Overall |
-|:--|:--:|:--:|:--:|:--:|:--:|
-| DeepSeek-R1-Distill-Qwen-7B | 80.0 / 6.6k | 43.3 / 11.8k | 85.0 / 4.2k | 24.2 / 11.3k | 58.1 / 8.5k |
-| **+ InfoDensity** | 95.0 / 3.6k | 60.0 / 6.5k | 91.0 / 2.1k | 42.9 / 5.6k | **72.2 / 4.5k** |
-| Qwen3-8B | 90.0 / 8.0k | 63.3 / 12.2k | 90.6 / 5.4k | 52.0 / 9.9k | 74.0 / 8.9k |
-| **+ InfoDensity** | 90.0 / 3.7k | 73.3 / 6.9k | 93.0 / 2.1k | 56.1 / 4.2k | **78.1 / 4.2k** |
-
-And DeepSeek-R1-Distill-Llama-8B (paper, Appendix E / Table 4):
-
-| Model | AMC23 | AIME24 | MATH500 | GPQA-D | Overall |
-|:--|:--:|:--:|:--:|:--:|:--:|
-| DeepSeek-R1-Distill-Llama-8B | 65.0 / 8.5k | 23.3 / 13.3k | 78.8 / 5.2k | 23.2 / 10.7k | 47.6 / 9.4k |
-| **+ InfoDensity** | 80.0 / 5.4k | 40.0 / 10.0k | 82.8 / 3.2k | 30.8 / 7.6k | **58.4 / 6.5k** |
-
-Cells are accuracy (%) / mean response tokens.
-
-The GPQA column credits a response that states its choice as `ANSWER: C` without `\boxed{}`;
-the paper's Appendix E table counted only boxed answers, which on these same outputs gives 23.2
-for the model against 17.7 for the base — 56.5 / 6.6k overall, and an essentially unchanged AES.
-Both sides of every comparison here use the same rule. The other columns match the paper exactly.
-
-</details>
 
 ## 🚀 Quick start
 
