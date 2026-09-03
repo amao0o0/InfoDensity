@@ -6,7 +6,6 @@ torch
 transformers
 peft            # merge_lora.py
 datasets        # benchmark loading
-pandas          # deepmath_val split
 pyarrow
 sympy           # grader.py
 pylatexenc      # math_normalize.py

@@ -100,7 +100,7 @@ def extract_choice(solution_str):
 
 # --- benchmark loaders -------------------------------------------------------
 
-def load_benchmark(name, data_dir="data"):
+def load_benchmark(name):
     """Returns a list of {question, answer} dicts."""
     if name == "amc23":
         ds = load_dataset("math-ai/amc23", split="test")
@@ -137,22 +137,6 @@ def load_benchmark(name, data_dir="data"):
                 raise RuntimeError(f"unrecognized gpqa schema: {list(ex.keys())}")
             out.append({"question": q, "answer": str(a)})
         return out
-    if name == "deepmath_val":
-        # In-domain validation split used during training (deepmath_subset/test.parquet).
-        import pandas as pd, ast
-        d = pd.read_parquet(os.path.join(data_dir, "deepmath_subset", "test.parquet"))
-        out = []
-        for _, r in d.iterrows():
-            pr = r["prompt"]
-            if isinstance(pr, str):
-                pr = ast.literal_eval(pr)
-            q = pr[0]["content"] if len(pr) else ""
-            rm = r["reward_model"]
-            if isinstance(rm, str):
-                rm = ast.literal_eval(rm)
-            gt = rm["ground_truth"]
-            out.append({"question": q, "answer": str(gt)})
-        return out
     raise ValueError(f"unknown benchmark: {name}")
 
 
@@ -163,7 +147,7 @@ def main():
     p.add_argument("--model_path", required=True,
                    help="HF model name or local path")
     p.add_argument("--benchmark", required=True,
-                   choices=["amc23", "math500", "aime24", "gpqa", "deepmath_val"])
+                   choices=["amc23", "math500", "aime24", "gpqa"])
     p.add_argument("--limit", type=int, default=None,
                    help="Cap benchmark to first N items (smoke test)")
     p.add_argument("--max_tokens", type=int, default=16384)
@@ -178,9 +162,6 @@ def main():
     p.add_argument("--output_dir", default=None,
                    help="Where to write results JSON; default: ./outputs")
     p.add_argument("--trust_remote_code", action="store_true")
-    p.add_argument("--data_dir",
-                   default=os.environ.get("INFODENSITY_DATA_DIR", "data"),
-                   help="Root dir for locally-built benchmarks (only used by deepmath_val)")
     args = p.parse_args()
 
     out_root = Path(args.output_dir) if args.output_dir else _HERE / "outputs"
@@ -193,7 +174,7 @@ def main():
           f"limit={args.limit} max_tokens={args.max_tokens} tp={args.tp}")
 
     # 1) load benchmark
-    data = load_benchmark(args.benchmark, args.data_dir)
+    data = load_benchmark(args.benchmark)
     if args.limit:
         data = data[: args.limit]
     print(f"[eval_vllm] loaded {len(data)} problems")

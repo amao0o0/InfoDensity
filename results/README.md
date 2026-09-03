@@ -18,16 +18,14 @@ regenerates them.
 
 Greedy decoding is not bit-reproducible under vLLM: batching and kernel selection perturb
 floating-point rounding, which occasionally flips a token and sends a trace down a different path.
-In practice that is usually harmless — `infodensity_dsr_llama_8b/` was produced by downloading the
-model from the Hub and re-running the pipeline months later on different hardware, and AMC23,
-AIME24 and MATH500 came back byte-identical, all 40, 30 and 500 generations.
+Usually this is harmless — re-running the pipeline on `infodensity_dsr_llama_8b/` reproduced AMC23,
+AIME24 and MATH500 byte for byte, all 40, 30 and 500 generations.
 
 Where it does bite: AMC23 and AIME24 have only 40 and 30 problems, so one flipped problem moves
 them by 2.5 and 3.3 points, and a trace that forks into a repetition loop runs to the 16384-token
 cap and scores zero rather than merely rounding differently. Smaller models with longer traces are
-the most exposed. Treat individual cells as point estimates; the four-benchmark mean is far steadier
-than any one of them.
+the most exposed. Treat individual cells as point estimates; the mean over the four benchmarks is
+far steadier than any one of them.
 
-The paper's baseline rows for the 7B and 8B blocks are quoted from prior work rather than re-run
-here, so `qwen3_8b_base/` may differ slightly. On GPQA-Diamond a response stating its choice as
-`ANSWER: C` without `\boxed{}` is credited, for model and base alike.
+On GPQA-Diamond a response stating its choice as `ANSWER: C` without `\boxed{}` is credited, for
+model and base alike.
