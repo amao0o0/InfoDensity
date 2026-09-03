@@ -37,5 +37,5 @@ individual cells as point estimates rather than exact quantities.
 The baseline rows in the paper's Table 2 for the 7B and 8B blocks are quoted from prior work rather
 than re-run here, so `qwen3_8b_base/` may differ from Table 2 by a small margin.
 
-GPQA-Diamond is scored with the multiple-choice fallback described in the top-level README, on both
-the model and its base.
+On GPQA-Diamond a response that states its choice as `ANSWER: C` without `\boxed{}` is credited,
+for the model and its base alike.

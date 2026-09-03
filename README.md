@@ -60,10 +60,10 @@ And DeepSeek-R1-Distill-Llama-8B (paper, Appendix E / Table 4):
 
 Cells are accuracy (%) / mean response tokens.
 
-The Llama-8B GPQA column is scored with the multiple-choice fallback described under
-[Answer extraction](#answer-extraction), which the paper's Appendix E table did not use; on the
-paper's stricter rule the same outputs give 23.2 (model) against 17.7 (base), i.e. 56.5 / 6.6k
-overall and an essentially unchanged AES. The other columns reproduce the published table exactly.
+The GPQA column credits a response that states its choice as `ANSWER: C` without `\boxed{}`;
+the paper's Appendix E table counted only boxed answers, which on these same outputs gives 23.2
+for the model against 17.7 for the base — 56.5 / 6.6k overall, and an essentially unchanged AES.
+Both sides of every comparison here use the same rule. The other columns match the paper exactly.
 
 </details>
 
@@ -92,17 +92,6 @@ python eval/compute_aes.py results/my_run --base Qwen/Qwen3-8B
 
 Evaluation follows the protocol used in the paper: greedy decoding, pass@1, a 16384-token generation
 cap, and the prompt `Please reason step by step, and put your final answer within \boxed{}`.
-
-### Answer extraction
-
-Answers are read from `\boxed{}`. On GPQA-Diamond only, when a response contains no boxed answer,
-`eval_vllm.py` falls back to the conventional multiple-choice forms (`ANSWER: C`, `the answer is B`).
-The DeepSeek-R1-Distill models state their GPQA answer that way in a sizeable fraction of responses,
-and scoring on `\boxed{}` alone throws those away. The fallback never overrides an explicit boxed
-answer, and applies to no other benchmark.
-
-All numbers in this repository — models, `results/`, and the base references in `compute_aes.py` —
-use this rule on both the model and its base, so the comparison is like-for-like.
 
 <details>
 <summary><b>Evaluating your own LoRA checkpoint</b></summary>
