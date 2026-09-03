@@ -34,8 +34,7 @@ Training with it keeps or improves accuracy while roughly halving the length of 
 |:--|:--|:--:|:--:|:--:|
 | [**InfoDensity-Qwen3-8B**](https://huggingface.co/amao0o0/InfoDensity-Qwen3-8B) | [Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B) | 78.1 <sub>(+4.1)</sub> | 4.2k <sub>(−53%)</sub> | **+0.69** |
 | [**InfoDensity-DeepSeek-R1-Distill-Qwen-7B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-7B) | [DSR-Qwen-7B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B) | 72.2 <sub>(+14.1)</sub> | 4.5k <sub>(−47%)</sub> | **+1.20** |
-| [**InfoDensity-DeepSeek-R1-Distill-Llama-8B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | [DSR-Llama-8B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | 56.5 <sub>(+10.3)</sub> | 6.6k <sub>(−30%)</sub> | **+0.97** |
-| [**InfoDensity-DeepSeek-R1-Distill-Qwen-1.5B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Qwen-1.5B) | [DSR-Qwen-1.5B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B) | 50.8 <sub>(+14.3)</sub> | 7.5k <sub>(−32%)</sub> | **+1.49** |
+| [**InfoDensity-DeepSeek-R1-Distill-Llama-8B**](https://huggingface.co/amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B) | [DSR-Llama-8B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B) | 58.4 <sub>(+10.8)</sub> | 6.5k <sub>(−31%)</sub> | **+0.99** |
 
 Accuracy and length are means over AMC23, AIME24, MATH500 and GPQA-Diamond; deltas are relative to
 the untrained base model. AES is the Accuracy–Efficiency Score (α=1, β=3, γ=5).
@@ -51,17 +50,20 @@ Raw per-benchmark summaries for every released checkpoint are in [`results/`](re
 | **+ InfoDensity** | 95.0 / 3.6k | 60.0 / 6.5k | 91.0 / 2.1k | 42.9 / 5.6k | **72.2 / 4.5k** |
 | Qwen3-8B | 90.0 / 8.0k | 63.3 / 12.2k | 90.6 / 5.4k | 52.0 / 9.9k | 74.0 / 8.9k |
 | **+ InfoDensity** | 90.0 / 3.7k | 73.3 / 6.9k | 93.0 / 2.1k | 56.1 / 4.2k | **78.1 / 4.2k** |
-| DeepSeek-R1-Distill-Qwen-1.5B | 50.0 / 9.6k | 20.0 / 14.3k | 69.6 / 6.2k | 6.6 / 14.4k | 36.5 / 11.1k |
-| **+ InfoDensity** | 80.0 / 5.0k | 33.3 / 9.8k | 80.2 / 3.4k | 9.6 / 11.8k | **50.8 / 7.5k** |
 
 And DeepSeek-R1-Distill-Llama-8B (paper, Appendix E / Table 4):
 
 | Model | AMC23 | AIME24 | MATH500 | GPQA-D | Overall |
 |:--|:--:|:--:|:--:|:--:|:--:|
-| DeepSeek-R1-Distill-Llama-8B | 65.0 / 8.5k | 23.3 / 13.3k | 78.8 / 5.2k | 17.7 / 10.7k | 46.2 / 9.4k |
-| **+ InfoDensity** | 80.0 / 5.4k | 40.0 / 10.0k | 82.8 / 3.2k | 23.2 / 7.7k | **56.5 / 6.6k** |
+| DeepSeek-R1-Distill-Llama-8B | 65.0 / 8.5k | 23.3 / 13.3k | 78.8 / 5.2k | 23.2 / 10.7k | 47.6 / 9.4k |
+| **+ InfoDensity** | 80.0 / 5.4k | 40.0 / 10.0k | 82.8 / 3.2k | 30.8 / 7.6k | **58.4 / 6.5k** |
 
 Cells are accuracy (%) / mean response tokens.
+
+The Llama-8B GPQA column is scored with the multiple-choice fallback described under
+[Answer extraction](#answer-extraction), which the paper's Appendix E table did not use; on the
+paper's stricter rule the same outputs give 23.2 (model) against 17.7 (base), i.e. 56.5 / 6.6k
+overall and an essentially unchanged AES. The other columns reproduce the published table exactly.
 
 </details>
 
@@ -90,6 +92,17 @@ python eval/compute_aes.py results/my_run --base Qwen/Qwen3-8B
 
 Evaluation follows the protocol used in the paper: greedy decoding, pass@1, a 16384-token generation
 cap, and the prompt `Please reason step by step, and put your final answer within \boxed{}`.
+
+### Answer extraction
+
+Answers are read from `\boxed{}`. On GPQA-Diamond only, when a response contains no boxed answer,
+`eval_vllm.py` falls back to the conventional multiple-choice forms (`ANSWER: C`, `the answer is B`).
+The DeepSeek-R1-Distill models state their GPQA answer that way in a sizeable fraction of responses,
+and scoring on `\boxed{}` alone throws those away. The fallback never overrides an explicit boxed
+answer, and applies to no other benchmark.
+
+All numbers in this repository — models, `results/`, and the base references in `compute_aes.py` —
+use this rule on both the model and its base, so the comparison is like-for-like.
 
 <details>
 <summary><b>Evaluating your own LoRA checkpoint</b></summary>
@@ -176,5 +189,5 @@ is an offline-vLLM rewrite of its evaluation script, and `grader.py` is taken fr
 ## ⚖️ License
 
 Apache-2.0 (see [LICENSE](LICENSE)). The released weights inherit their base models' licenses:
-the DeepSeek-R1-Distill checkpoints (Qwen-7B, Llama-8B, Qwen-1.5B) are MIT, and Qwen3-8B is
+the DeepSeek-R1-Distill checkpoints (Qwen-7B, Llama-8B) are MIT, and Qwen3-8B is
 Apache-2.0.

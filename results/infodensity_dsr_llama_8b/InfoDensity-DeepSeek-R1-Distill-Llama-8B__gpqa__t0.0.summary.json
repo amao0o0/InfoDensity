@@ -1,0 +1,10 @@
+{
+  "model_path": "amao0o0/InfoDensity-DeepSeek-R1-Distill-Llama-8B",
+  "benchmark": "gpqa",
+  "n_problems": 198,
+  "num_correct": 61,
+  "accuracy": 0.30808080808080807,
+  "avg_response_tokens": 7636.156565656565,
+  "max_tokens": 16384,
+  "temperature": 0.0
+}

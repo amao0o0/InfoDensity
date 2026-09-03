@@ -16,7 +16,8 @@ import json
 import os
 import sys
 
-# Base-model reference numbers, as reported in the paper (Table 2, 'Original' rows).
+# Base-model reference numbers (paper Table 2, 'Original' rows). GPQA is scored with
+# the multiple-choice fallback in eval_vllm.py, so these rows use that same rule.
 BASE = {
     "Qwen/Qwen3-4B": {
         "amc23":   (90.0,  7600),
@@ -39,19 +40,12 @@ BASE = {
         "gpqa":    (52.0,  9900),
         "overall": (74.0,  8900),
     },
-    "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B": {
-        "amc23":   (50.0,  9600),
-        "aime24":  (20.0, 14300),
-        "math500": (69.6,  6200),
-        "gpqa":    ( 6.6, 14400),
-        "overall": (36.5, 11100),
-    },
     "deepseek-ai/DeepSeek-R1-Distill-Llama-8B": {
         "amc23":   (65.0,  8500),
         "aime24":  (23.3, 13300),
         "math500": (78.8,  5200),
-        "gpqa":    (17.7, 10700),
-        "overall": (46.2,  9400),
+        "gpqa":    (23.2, 10700),
+        "overall": (47.6,  9400),
     },
 }
 
@@ -70,13 +64,10 @@ def aes(a_model, l_model, a_base, l_base, alpha=1, beta=3, gamma=5):
 def infer_base(results_dir):
     """Guess the base model from the results dir name.
 
-    Matched most-specific first: a name like ``results_dsr1_1.5b`` contains both
-    "1.5b" and "dsr1", and a name like ``infodensity_llama8b`` contains both
+    Matched most-specific first: a name like ``infodensity_llama8b`` contains both
     "llama" and "8b", so order decides. Pass --base to skip the guessing.
     """
     name = os.path.basename(os.path.normpath(results_dir)).lower()
-    if "1.5b" in name or "1_5b" in name:
-        return "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
     if "llama" in name:
         return "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
     if "8b" in name:
