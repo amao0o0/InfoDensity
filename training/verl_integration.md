@@ -1,18 +1,28 @@
-# Forwarding rollout entropy to the reward function
+# Running InfoDensity on verl
 
-InfoDensity's quality term reads the **per-token entropy of the trace as it was
-generated**. vLLM already computes those values during rollout, so no extra
-forward pass is needed — but stock verl drops them before the reward function
-runs. One change to the batch reward manager keeps them.
+`R_quality` reads the **per-token entropy of the trace as it was generated**. verl computes those
+values, but discards them before the reward function runs, so two changes are needed. Without them
+`extra_infos[i]["entropys"]` is `None`, `R_quality` is skipped, and what trains is the length term
+alone — silently, with no error.
 
-Without it, `extra_infos[i]["entropys"]` is `None`, `R_quality` is skipped, and
-what you are training is the length term alone.
+## Which verl
 
-## The change
+Pin **v0.6.1**:
 
-In `verl/workers/reward_manager/batch.py`, inside `BatchRewardManager.verify()`,
-the loop that fills `extras` also copies the rollout entropies and the response
-token ids, both truncated to the sample's valid response length:
+```bash
+git clone --branch v0.6.1 https://github.com/volcengine/verl.git
+```
+
+This matters. v0.7.0 removed the synchronous rollout path; its remaining path computes rewards
+through a separate registry that has no `batch` manager, so the change below lands in a file that
+is never called and training fails with `Unknown reward manager: batch`. v0.5.0 and earlier do not
+have the code the change applies to.
+
+## Change 1 — forward the entropies to the reward function
+
+In `verl/workers/reward_manager/batch.py`, inside `BatchRewardManager.verify()`, the loop that
+fills `extras` also copies the entropies and the response token ids, both truncated to the sample's
+valid response length:
 
 ```python
         rollout_reward_scores = data.non_tensor_batch.get("reward_scores", [{} for _ in range(len(data))])
@@ -27,70 +37,75 @@ token ids, both truncated to the sample's valid response length:
                 extras[i]["valid_response_ids"] = response_ids[i][:valid_len].tolist()  # added
 ```
 
-`valid_response_lengths` and `response_ids` are already local variables in
-`verify()`; nothing else in the method changes. The guard on `entropys_batch`
-keeps the manager working on batches that carry no entropies, such as the
-validation split.
+`valid_response_lengths` and `response_ids` are already local variables in `verify()`. The guard
+keeps the manager working on batches that carry no entropies, such as the validation split.
 
-`entropys` is a plain `list[float]` by the time the reward function sees it, one
-value per response token, aligned with `valid_response_ids`.
+## Change 2 — keep the entropies until the reward has run
 
-## Producing `data.batch["entropys"]`
+In `verl/trainer/ppo/ray_trainer.py`, the entropies are produced by the `old_log_prob` step and
+dropped before they reach the batch, and the reward is computed before that step runs at all. Two
+edits fix the ordering:
 
-The rollout worker only stores entropies when log-prob calculation is on:
-
-```
-actor_rollout_ref.rollout.calculate_log_probs=True
-```
-
-On recent verl (0.7.x) that is all that is required — `vllm_rollout_spmd.py`
-computes `rollout_entropies` and puts them in the batch. On older versions you
-may need to check that your rollout worker writes an `entropys` entry.
-
-## Wiring the reward function
-
-```
-reward_model.reward_manager=batch
-custom_reward_function.path=/path/to/training/infodensity_reward.py
-custom_reward_function.name=compute_score
-+custom_reward_function.reward_kwargs.tokenizer_name=<policy model id>
-+custom_reward_function.reward_kwargs.length_coef=<lambda>
-+custom_reward_function.reward_kwargs.entropy_chunk_size=<C>
-+custom_reward_function.reward_kwargs.entropy_top_k=<K>
-```
-
-`infodensity_reward.py` imports `entropy_trajectory` as a top-level module, so
-put `training/` on `PYTHONPATH`.
-
-## Checking it works
-
-The reward function is a pure function of a batch, so the integration can be
-checked without a training run:
+1. Delete `old_log_prob.batch.pop("entropys")` — the line immediately above
+   `batch = batch.union(old_log_prob)`.
+2. Move the whole `with marked_timer("reward", ...):` block from above the "Operating Mode
+   Selection" comment to just after that `union`, i.e. immediately before
+   `assert "old_log_probs" in batch.batch`, and drop the entropies once it has run:
 
 ```python
-import numpy as np
-from infodensity_reward import compute_score
-
-# One prompt, two correct traces of different lengths.
-rewards = compute_score(
-    data_sources=["deepmath_subset"] * 2,
-    solution_strs=["<think>" + "reasoning " * 200 + "</think> The answer is \\boxed{4}",
-                   "<think>" + "reasoning " * 600 + "</think> The answer is \\boxed{4}"],
-    ground_truths=["4", "4"],
-    extra_infos=[{"index": 0, "entropys": list(np.linspace(3.0, 0.1, 400))},
-                 {"index": 0, "entropys": list(np.linspace(3.0, 0.1, 1200))}],
-    tokenizer_name="<policy model id>",
-    length_coef=...,      # your training values
-    entropy_chunk_size=...,
-    entropy_top_k=...,
-)
-print(rewards)  # shorter trace should score higher; both non-zero
+                    with marked_timer("reward", timing_raw, color="yellow"):
+                        ...                       # the block, moved verbatim
+                    if "entropys" in batch.batch:
+                        batch.batch.pop("entropys")
 ```
 
-If both rewards come back equal, `entropys` is not reaching the function.
+## Enable the entropy computation
+
+The entropies exist only when the actor is asked for them, which on v0.6.1 is tied to the entropy
+coefficient. **`actor.entropy_coeff` must be non-zero**, or `entropys` is never computed and the
+reward silently falls back to the length term.
+
+## A run
+
+```bash
+PYTHONPATH=/path/to/verl:/path/to/InfoDensity/training \
+python3 -m verl.trainer.main_ppo \
+    algorithm.adv_estimator=grpo \
+    data.train_files=data/deepmath_subset/train.parquet \
+    data.val_files=data/deepmath_subset/test.parquet \
+    actor_rollout_ref.model.path=<policy model id> \
+    actor_rollout_ref.actor.entropy_coeff=<non-zero> \
+    actor_rollout_ref.rollout.name=vllm \
+    actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
+    actor_rollout_ref.rollout.calculate_log_probs=True \
+    reward_model.reward_manager=batch \
+    custom_reward_function.path=/path/to/InfoDensity/training/infodensity_reward.py \
+    custom_reward_function.name=compute_score \
+    +custom_reward_function.reward_kwargs.tokenizer_name=<policy model id> \
+    +custom_reward_function.reward_kwargs.length_coef=<lambda> \
+    +custom_reward_function.reward_kwargs.entropy_chunk_size=<C> \
+    +custom_reward_function.reward_kwargs.entropy_top_k=<K> \
+    +custom_reward_function.reward_kwargs.log_frequency=1 \
+    trainer.n_gpus_per_node=<N> trainer.nnodes=1
+```
+
+Batch sizes, learning rate, rollout count and response length are yours to set.
+`tensor_model_parallel_size` must divide the number of GPUs.
+
+## Checking that the entropies arrive
+
+`log_frequency=1` makes the reward print one line per batch:
+
+```
+[InfoDensity] batch 7 | correct 5/16 | reward mean 0.3120 max 0.8400 | R_quality mean 0.412 over 5 traces
+```
+
+`R_quality mean ... over N traces` with N > 0 is the confirmation. If it reads
+`no entropy trajectories` while `correct` is non-zero, the entropies are not arriving and one of
+the two changes above has not taken. On the validation split that message is expected — no
+entropies are computed there, and those traces keep their base reward.
 
 ---
 
-`batch.py` is part of [verl](https://github.com/volcengine/verl), Apache-2.0.
-The snippet above is quoted from it and modified; the surrounding file keeps its
-original license and copyright.
+`batch.py` and `ray_trainer.py` are part of [verl](https://github.com/volcengine/verl), Apache-2.0.
+The snippets above are quoted from them and modified; the files keep their original license.

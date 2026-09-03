@@ -48,15 +48,15 @@ python training/prepare_data.py --local_dir data/deepmath_subset
 The difficulty 5-10 slice of [DeepMath-103K](https://huggingface.co/datasets/zwhe99/DeepMath-103K),
 7000 problems, split 95/5.
 
-**2. Patch verl so rollout entropy reaches the reward.** One block in
-`verl/workers/reward_manager/batch.py`, plus
-`actor_rollout_ref.rollout.calculate_log_probs=True`. Without it `R_quality` is silently skipped and
-you are training the length term alone.
+**2. Patch verl so the entropies reach the reward.** Two edits, one in
+`verl/workers/reward_manager/batch.py` and one in `verl/trainer/ppo/ray_trainer.py`, against
+**verl v0.6.1**, plus a non-zero `actor.entropy_coeff`. Without them `R_quality` is silently
+skipped and you are training the length term alone.
 
 **3. Point verl's `batch` reward manager at `compute_score`**, passing `tokenizer_name`,
 `length_coef`, `entropy_chunk_size` and `entropy_top_k` through
-`custom_reward_function.reward_kwargs`. [`verl_integration.md`](verl_integration.md) has both the
-patch and the overrides, plus a check that tells you whether the patch took.
+`custom_reward_function.reward_kwargs`. [`verl_integration.md`](verl_integration.md) has the two
+edits, a full run command, and the line to look for that tells you the entropies are arriving.
 
 The released checkpoints were trained with LoRA; the reward is indifferent to that choice.
 

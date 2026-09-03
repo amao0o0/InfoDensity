@@ -141,9 +141,9 @@ bought with accuracy. A correct one is scored on two factors:
 - **$R_L$** — $\exp(-\lambda z)$, with $z$ the trace's length z-score among the correct traces for
   the same prompt.
 
-One patch to verl is needed for that entropy to reach the reward; without it $R_{\text{quality}}$ is
-silently skipped. [`training/README.md`](training/README.md) has it, plus the data prep and the
-hydra overrides.
+Two edits to verl (v0.6.1) are needed for those entropies to reach the reward; without them
+$R_{\text{quality}}$ is silently skipped. [`training/README.md`](training/README.md) has them, plus
+the data prep and a full run command.
 
 ## 🙏 Acknowledgements
 
