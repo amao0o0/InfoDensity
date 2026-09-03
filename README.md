@@ -83,7 +83,8 @@ python eval/eval_vllm.py \
     --output_dir results/my_run
 ```
 
-`--benchmark` accepts `amc23`, `aime24`, `math500` and `gpqa`. Once all four have run, score them:
+`--benchmark` accepts `amc23`, `aime24`, `math500` and `gpqa` — and `deepmath_val`, the in-domain validation split, once [`training/prepare_data.py`](training/prepare_data.py) has
+built it. Once the four have run, score them:
 
 ```bash
 python eval/compute_aes.py results/my_run --base Qwen/Qwen3-8B

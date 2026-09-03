@@ -8,12 +8,16 @@ Pools all 4 benchmarks (AMC23 + AIME24 + MATH500 + GPQA-D) into 4 cells:
 
 For each cell: count, %, median lengths (base/info), Δmedian, %shorter, %base hits 16k cap.
 
+This reads the per-sample .jsonl written by eval_vllm.py, not the .summary.json.
+Those generations are far too large to ship, so results/ does not contain them --
+run eval_vllm.py on the base model and on an InfoDensity model first, then point
+this at the two output directories. --base_tag/--info_tag are the filename
+prefixes eval_vllm.py derived from each --model_path.
+
 Usage:
     python eval/four_cell_analysis.py \
-        --base_dir results/qwen3_8b_base \
-        --info_dir results/infodensity_qwen3_8b \
-        --base_tag Qwen3-8B \
-        --info_tag InfoDensity-Qwen3-8B
+        --base_dir  runs/base  --base_tag Qwen3-8B \
+        --info_dir  runs/info  --info_tag InfoDensity-Qwen3-8B
 """
 import argparse
 import json
@@ -28,13 +32,13 @@ def load_jsonl(path):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--base_dir", required=True,
-                   help="Dir containing base eval jsonls")
+                   help="Dir holding the base model's per-sample .jsonl")
     p.add_argument("--info_dir", required=True,
-                   help="Dir containing InfoDensity eval jsonls")
-    p.add_argument("--base_tag", default="Qwen3-8B",
-                   help="Filename prefix tag for base, e.g. 'Qwen3-8B' or 'DeepSeek-R1-Distill-Qwen-7B'")
-    p.add_argument("--info_tag", default="merged_hf",
-                   help="Filename prefix tag for InfoDensity, usually 'merged_hf'")
+                   help="Dir holding the InfoDensity model's per-sample .jsonl")
+    p.add_argument("--base_tag", required=True,
+                   help="Filename prefix for the base run, e.g. 'Qwen3-8B'")
+    p.add_argument("--info_tag", required=True,
+                   help="Filename prefix for the InfoDensity run, e.g. 'InfoDensity-Qwen3-8B'")
     args = p.parse_args()
 
     base_dir = Path(args.base_dir)

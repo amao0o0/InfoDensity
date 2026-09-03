@@ -10,6 +10,9 @@
 #   PROJECT_DIR        repo root (default: the parent of this script's directory)
 #   CKPT_BASE          path to the directory holding the global_step_* checkpoints
 #   EVAL_OUTPUT_DIR    where to write per-ckpt eval results
+#   EVAL_LIMIT         optional; cap problems per benchmark (smoke tests)
+#   DELETE_MERGED_AFTER=1  drop merged_hf once a step's benchmarks are done
+#   PRUNE_FSDP_AFTER=1     drop FSDP shards / optimizer state (blocks resuming)
 
 set -uo pipefail   # NOTE: no -e — we want a single benchmark failure (e.g. dataset 401) NOT to kill the rest
 unset ROCR_VISIBLE_DEVICES
@@ -44,12 +47,6 @@ for STEP in ${CKPT_STEPS}; do
             --output_dir "${MERGED}"
     else
         echo "[run_eval] step ${STEP}: merged_hf exists, reuse"
-    fi
-
-    # Track whether we created the merged_hf this run (so we know if it's safe to delete)
-    CREATED_MERGED=0
-    if [ ! -f "${MERGED}/config.json" ]; then
-        CREATED_MERGED=1   # set above to handle re-run case
     fi
 
     # 2. For each benchmark

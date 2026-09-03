@@ -1,11 +1,16 @@
-# Evaluation pipeline dependencies.
-# Pinned to the versions used for the results reported in the paper.
-vllm==0.8.4
+# Evaluation pipeline. The summaries in results/ were produced with vLLM 0.10.0;
+# other versions are untested and greedy decoding is sensitive to the kernels
+# vLLM selects (see results/README.md).
+vllm==0.10.0
 torch
 transformers
-peft
-datasets
-pandas
+peft            # merge_lora.py
+datasets        # benchmark loading
+pandas          # deepmath_val split
 pyarrow
-sympy
-pylatexenc
+sympy           # grader.py
+pylatexenc      # math_normalize.py
+numpy
+
+# training/ additionally needs:
+mathruler       # answer equivalence in the reward's correctness gate
