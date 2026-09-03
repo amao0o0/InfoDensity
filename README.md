@@ -2,7 +2,7 @@
 
 # InfoDensity
 
-**Rewarding Information-Dense Traces for Efficient Reasoning**
+### Rewarding Information-Dense Traces for Efficient Reasoning
 
 [![EMNLP 2026](https://img.shields.io/badge/EMNLP%202026-Main-b31b1b.svg)](https://2026.emnlp.org/)
 [![Models](https://img.shields.io/badge/%F0%9F%A4%97%20Models-InfoDensity-ffbd45.svg)](https://huggingface.co/amao0o0)
@@ -10,7 +10,8 @@
 
 Chengwei Wei · Jung-jae Kim · Longyin Zhang · Shengkai Chen · Nancy F. Chen
 
-*Institute of Advanced Intelligence and Computing (IAIC) · Centre for Frontier AI Research (CFAR)*
+*Centre for Frontier AI Research (CFAR)*<br>
+*Institute of Advanced Intelligence and Computing (IAIC)*<br>
 *A\*STAR, Singapore*
 
 </div>
