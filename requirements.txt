@@ -1,3 +1,5 @@
+# --- Evaluation (eval/) ---------------------------------------------------
+# eval/ drives vLLM directly and does not use verl.
 # vLLM does not cap transformers (it asks only for >=4.53.2), so an unpinned
 # install resolves to a major release that postdates this vLLM and pairs the two
 # untested. transformers and peft are pinned to the versions the summaries in
@@ -12,5 +14,9 @@ sympy                   # grader.py
 pylatexenc              # math_normalize.py
 numpy
 
-# training/ additionally needs:
+# --- Training (training/) -------------------------------------------------
+# Additionally needs mathruler, and verl v0.6.1 installed from a source
+# checkout, because two files in it have to be edited first — see
+# training/verl_integration.md. verl accepts vllm>=0.8.5,<=0.11.0, so the pin
+# above works for both halves.
 mathruler               # answer equivalence in the reward's correctness gate
