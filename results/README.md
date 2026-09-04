@@ -13,13 +13,3 @@ Raw per-benchmark summaries written by `eval/eval_vllm.py` (greedy decoding, pas
 Each file records accuracy, number of correct answers and mean generated length for one benchmark.
 Per-sample generations are not included here because of their size; re-running `eval/eval_vllm.py`
 regenerates them.
-
-## A note on reproducibility
-
-Greedy decoding is not bit-reproducible under vLLM: batching and kernel selection perturb
-floating-point rounding, which can flip a token and send a trace down a different path. Treat
-individual benchmark cells as point estimates; the mean over the four benchmarks is steadier than
-any one of them.
-
-On GPQA-Diamond a response stating its choice as `ANSWER: C` without `\boxed{}` is credited, for
-model and base alike.
